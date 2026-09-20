@@ -27,7 +27,13 @@ namespace TurnoOptTI.Web.Services
             var mensaje = ArmarMensaje(destinatario, asunto, cuerpoHtml);
 
             using var cliente = new SmtpClient();
-            await cliente.ConnectAsync(_settings.SmtpServer, _settings.Port, SecureSocketOptions.StartTls);
+            cliente.Timeout = 10000; // 10s timeout máximo
+
+            var secureOption = _settings.Port == 465
+                ? SecureSocketOptions.SslOnConnect
+                : SecureSocketOptions.StartTls;
+
+            await cliente.ConnectAsync(_settings.SmtpServer, _settings.Port, secureOption);
             await cliente.AuthenticateAsync(_settings.SenderEmail, _settings.Password);
             await cliente.SendAsync(mensaje);
             await cliente.DisconnectAsync(true);
@@ -53,53 +59,53 @@ namespace TurnoOptTI.Web.Services
             if (!turnosPorColab.Any())
                 return;
 
-            foreach (var grupo in turnosPorColab)
+            using var cliente = new SmtpClient();
+            cliente.Timeout = 10000; // Timeout de 10s para evitar congelamientos
+
+            var secureOption = _settings.Port == 465
+                ? SecureSocketOptions.SslOnConnect
+                : SecureSocketOptions.StartTls;
+
+            try
             {
-                var colab = grupo.Key!;
-                var turnosOrdenados = grupo.OrderBy(t => t.FechaTurno).ToList();
-                string cuerpoHtml = GenerarHtmlPlanificacion(malla, colab, turnosOrdenados);
-                string asunto = $"[TurnoOpt TI] Tu Malla de Turnos Oficial - {malla.PeriodoMes}/{malla.PeriodoAnio}";
+                // Conexión única para todo el lote
+                await cliente.ConnectAsync(_settings.SmtpServer, _settings.Port, secureOption);
+                await cliente.AuthenticateAsync(_settings.SenderEmail, _settings.Password);
 
-                bool enviado = false;
-                int intentos = 0;
-
-                while (!enviado && intentos < 3)
+                foreach (var grupo in turnosPorColab)
                 {
-                    intentos++;
+                    var colab = grupo.Key!;
+                    var turnosOrdenados = grupo.OrderBy(t => t.FechaTurno).ToList();
+                    string cuerpoHtml = GenerarHtmlPlanificacion(malla, colab, turnosOrdenados);
+                    string asunto = $"[TurnoOpt TI] Tu Malla de Turnos Oficial - {malla.PeriodoMes}/{malla.PeriodoAnio}";
+
                     try
                     {
-                        using var cliente = new SmtpClient();
-                        await cliente.ConnectAsync(_settings.SmtpServer, _settings.Port, SecureSocketOptions.StartTls);
-                        await cliente.AuthenticateAsync(_settings.SenderEmail, _settings.Password);
-
                         var mensaje = ArmarMensaje(colab.Email, asunto, cuerpoHtml);
                         await cliente.SendAsync(mensaje);
-                        await cliente.DisconnectAsync(true);
-
-                        enviado = true;
                         _logger.LogInformation("Notificación enviada con éxito a {Email}", colab.Email);
-                    }
-                    catch (SmtpCommandException ex) when (ex.Message.Contains("Too many emails"))
-                    {
-                        _logger.LogWarning("Límite de velocidad en Mailtrap para {Email}. Reintentando en 3s...", colab.Email);
-                        await Task.Delay(3000);
+
+                        await Task.Delay(300); // Pausa breve de cortesía
                     }
                     catch (Exception ex)
                     {
                         _logger.LogError(ex, "Error al entregar correo a {Email}", colab.Email);
-                        break;
                     }
                 }
 
-                // Pausa prudente para el sandbox gratuito de Mailtrap
-                await Task.Delay(2500);
+                await cliente.DisconnectAsync(true);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error crítico de conexión SMTP en puerto {Port}", _settings.Port);
+                throw;
             }
         }
 
         private MimeMessage ArmarMensaje(string destinatario, string asunto, string cuerpoHtml)
         {
             var mensaje = new MimeMessage();
-            mensaje.From.Add(new MailboxAddress(_settings.SenderName, "notificaciones@turnoopt.cl"));
+            mensaje.From.Add(new MailboxAddress(_settings.SenderName, _settings.SenderEmail));
             mensaje.To.Add(MailboxAddress.Parse(destinatario));
             mensaje.Subject = asunto;
 
