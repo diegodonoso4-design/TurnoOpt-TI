@@ -1,6 +1,4 @@
-﻿using System.Net;
-using System.Net.Sockets;
-using System.Text;
+﻿using System.Text;
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using Microsoft.EntityFrameworkCore;
@@ -61,10 +59,8 @@ namespace TurnoOptTI.Web.Services
 
             try
             {
-                // 1. Conexión y autenticación única nativa
                 await ConectarClienteAsync(cliente);
 
-                // 2. Envío en ráfaga reutilizando el socket abierto
                 foreach (var grupo in turnosPorColab)
                 {
                     var colab = grupo.Key!;
@@ -76,9 +72,9 @@ namespace TurnoOptTI.Web.Services
                     {
                         var mensaje = ArmarMensaje(colab.Email, asunto, cuerpoHtml);
                         await cliente.SendAsync(mensaje);
-                        _logger.LogInformation("Notificación enviada nativamente a {Email}", colab.Email);
+                        _logger.LogInformation("Notificación enviada exitosamente a {Email}", colab.Email);
 
-                        await Task.Delay(250); // Pausa breve de cortesía
+                        await Task.Delay(200);
                     }
                     catch (Exception ex)
                     {
@@ -90,36 +86,28 @@ namespace TurnoOptTI.Web.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Fallo crítico en la conexión SMTP nativa con {Host}:{Port}", _settings.SmtpServer, _settings.Port);
+                _logger.LogError(ex, "Fallo crítico en conexión SMTP con {Host}:{Port}", _settings.SmtpServer, _settings.Port);
                 throw;
             }
         }
 
         private async Task ConectarClienteAsync(SmtpClient cliente)
         {
-            // Determinación estricta de TLS/SSL según el puerto estándar
-            var socketOption = _settings.Port == 465
+            int puerto = _settings.Port > 0 ? _settings.Port : 2525;
+
+            var socketOption = puerto == 465
                 ? SecureSocketOptions.SslOnConnect
                 : SecureSocketOptions.StartTls;
 
-            // Resolución explícita a IPv4 para evitar timeouts en redes de hosting que no soportan IPv6
-            string hostFinal = _settings.SmtpServer;
-            try
-            {
-                var ips = await Dns.GetHostAddressesAsync(_settings.SmtpServer);
-                var ipV4 = ips.FirstOrDefault(ip => ip.AddressFamily == AddressFamily.InterNetwork);
-                if (ipV4 != null)
-                {
-                    hostFinal = ipV4.ToString();
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "No se pudo forzar IPv4, utilizando nombre de host directo: {Host}", _settings.SmtpServer);
-            }
+            _logger.LogInformation("Conectando a {Host}:{Port} ({Option})...", _settings.SmtpServer, puerto, socketOption);
 
-            await cliente.ConnectAsync(hostFinal, _settings.Port, socketOption);
-            await cliente.AuthenticateAsync(_settings.SenderEmail, _settings.Password);
+            await cliente.ConnectAsync(_settings.SmtpServer, puerto, socketOption);
+
+            // SendGrid exige autenticarse con el usuario "apikey"
+            string usuarioAuth = _settings.SmtpServer.Contains("sendgrid") ? "apikey" : _settings.SenderEmail;
+
+            await cliente.AuthenticateAsync(usuarioAuth, _settings.Password);
+            _logger.LogInformation("Autenticación SMTP exitosa en {Host}", _settings.SmtpServer);
         }
 
         private MimeMessage ArmarMensaje(string destinatario, string asunto, string cuerpoHtml)
