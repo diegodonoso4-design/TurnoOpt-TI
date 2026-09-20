@@ -1,0 +1,104 @@
+﻿@model IEnumerable<TurnoOptTI.Web.Models.PlanificacionTurno>
+
+@{
+    ViewData["Title"] = "Panel Principal";
+    Layout = "_Layout"; // <--- ESTA LÍNEA RESTAURA LOS ESTILOS Y EL DISEÑO GLOBAL
+}
+
+@if (User.IsInRole("Supervisor TI"))
+{
+    <div class="card">
+        <h2>Panel de Supervisión y Operaciones TI</h2>
+        <p style="margin-top: 0.5rem; color: var(--text-muted);">
+            Plataforma automatizada para la planificación horaria, control normativo de la Ley 21.561 y gestión de contingencias operativas.
+        </p>
+
+        <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid var(--border-ui);" />
+
+        <h3>Accesos Rápidos del Sistema</h3>
+        <div style="display: flex; gap: 1rem; margin-top: 1rem; flex-wrap: wrap;">
+            <a asp-controller="Mallas" asp-action="Generar" class="btn btn-primary">Planificar Malla de Turnos (F1)</a>
+            <a asp-controller="Colaboradores" asp-action="Index" class="btn btn-primary">Gestión de Colaboradores</a>
+            <a asp-controller="Ausencias" asp-action="Crear" class="btn btn-primary">Registrar Ausencia / Licencia (F2)</a>
+            <a asp-controller="Reemplazos" asp-action="Asignar" class="btn btn-success">Gestión de Reemplazos / Horas Extra (F3)</a>
+            <a asp-controller="Reglas" asp-action="Index" class="btn btn-primary">Parámetros Normativos</a>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <div>
+                <h2>Mis Guardias: Calendario Mensual (RF10 / CU-002)</h2>
+                <p style="margin-top: 0.3rem; color: var(--text-muted);">
+                    Cronograma de turnos correspondiente al periodo actual: @System.Globalization.DateTimeFormatInfo.CurrentInfo.GetMonthName(DateTime.Now.Month).ToUpper() @DateTime.Now.Year.
+                </p>
+            </div>
+            <a asp-controller="Ausencias" asp-action="Crear" class="btn btn-primary">Solicitar Licencia o Permiso</a>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>Mis Turnos Asignados</h3>
+        <div class="table-responsive" style="margin-top: 1rem;">
+            <table class="custom-table">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Día</th>
+                        <th>Tipo de Turno</th>
+                        <th>Horario Entrada / Salida</th>
+                        <th>Duración</th>
+                        <th>Estado de Turno</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model != null && Model.Any())
+                    {
+                        @foreach (var turno in Model)
+                        {
+                            <tr>
+                                <td><strong>@turno.FechaTurno.ToString("dd/MM/yyyy")</strong></td>
+                                <td>@turno.FechaTurno.ToString("dddd", new System.Globalization.CultureInfo("es-CL")).ToUpper()</td>
+                                <td>
+                                    <span class="user-tag" style="background-color: @(turno.TipoTurno?.EsNocturno == true ? "#4a5568" : "#2b6cb0")">
+                                        @turno.TipoTurno?.NombreTurno
+                                    </span>
+                                </td>
+                                <td>@turno.TipoTurno?.HoraInicio.ToString(@"hh\:mm") - @turno.TipoTurno?.HoraFin.ToString(@"hh\:mm")</td>
+                                <td>@turno.TipoTurno?.DuracionHoras hrs</td>
+                                <td>
+                                    @if (turno.EstadoTurno == "Programado")
+                                    {
+                                        <span class="user-tag" style="background-color: #3182ce;">Programado</span>
+                                    }
+                                    else if (turno.EstadoTurno == "Ausente")
+                                    {
+                                        <span class="user-tag" style="background-color: #e53e3e;">Licencia Médica</span>
+                                    }
+                                    else if (turno.EstadoTurno == "Reemplazado")
+                                    {
+                                        <span class="user-tag" style="background-color: #dd6b20;">Reemplazado</span>
+                                    }
+                                    else
+                                    {
+                                        <span>@turno.EstadoTurno</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">
+                                No posee turnos programados en este mes o la malla mensual aún se encuentra en revisión.
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

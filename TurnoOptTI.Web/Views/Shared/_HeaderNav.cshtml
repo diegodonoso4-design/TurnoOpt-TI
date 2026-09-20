@@ -1,0 +1,39 @@
+﻿@using System.Security.Claims
+
+<nav class="navbar">
+    <a class="navbar-brand" asp-controller="Home" asp-action="Index">TurnoOpt-TI</a>
+
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+        <ul class="nav-links">
+            @if (User.IsInRole("Supervisor TI"))
+            {
+                <li><a asp-controller="Mallas" asp-action="Generar">Planificar Malla</a></li>
+                <li><a asp-controller="Colaboradores" asp-action="Index">Colaboradores TI</a></li>
+                <li><a asp-controller="Reemplazos" asp-action="Asignar">Reemplazos y Horas Extra</a></li>
+                <li><a asp-controller="Reglas" asp-action="Index">Reglas Laborales</a></li>
+            }
+            else
+            {
+                <li><a asp-controller="Home" asp-action="Index">Mi Calendario</a></li>
+                <li><a asp-controller="Ausencias" asp-action="Crear">Registrar Licencia/Permiso</a></li>
+            }
+
+            <li class="user-tag">
+                @User.Identity.Name (@(User.IsInRole("Supervisor TI") ? "Supervisor" : "Operador"))
+            </li>
+            <li>
+                <form asp-controller="Account" asp-action="Logout" method="post" style="display: inline;">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn-exit">Cerrar Sesión</button>
+                </form>
+            </li>
+        </ul>
+    }
+    else
+    {
+        <ul class="nav-links">
+            <li><a asp-controller="Account" asp-action="Login">Iniciar Sesión</a></li>
+        </ul>
+    }
+</nav>

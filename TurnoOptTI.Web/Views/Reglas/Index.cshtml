@@ -1,0 +1,66 @@
+﻿@model IEnumerable<TurnoOptTI.Web.Models.ReglaParametrica>
+
+@{
+    ViewData["Title"] = "Parámetros Normativos y Laborales";
+    Layout = "_Layout"; // <--- ESTA LÍNEA RESTAURA LOS ESTILOS Y EL DISEÑO GLOBAL
+}
+
+<div class="card">
+    <h2>Catálogo de Reglas Paramétricas (Ley 21.561 / Código del Trabajo)</h2>
+    <p style="color: var(--text-muted); margin-bottom: 1.5rem;">
+        Administración dinámica de umbrales laborales. Los motores de mallas y reemplazos leen estos valores en tiempo real evitando valores fijos en código.
+    </p>
+
+    @if (TempData["SuccessMsg"] != null)
+    {
+        <div style="background-color: #c6f6d5; border: 1px solid #9ae6b4; color: #22543d; padding: 12px; border-radius: 5px; margin-bottom: 20px;">
+            @TempData["SuccessMsg"]
+        </div>
+    }
+
+    @if (TempData["ErrorMsg"] != null)
+    {
+        <div style="background-color: #fed7d7; border: 1px solid #feb2b2; color: #9b2c2c; padding: 12px; border-radius: 5px; margin-bottom: 20px;">
+            @TempData["ErrorMsg"]
+        </div>
+    }
+
+    <div class="table-responsive">
+        <table class="custom-table">
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>Descripción de la Regla</th>
+                    <th>Valor Límite</th>
+                    <th>Unidad</th>
+                    <th>Fuente Normativa</th>
+                    <th>Vigencia Desde</th>
+                    <th>Acción</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in Model)
+                {
+                    <tr>
+                        <td><code>@r.CodigoRegla</code></td>
+                        <td><strong>@r.NombreRegla</strong></td>
+                        <td>
+                            <form asp-action="Actualizar" method="post" style="display: flex; gap: 8px; align-items: center;">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="idRegla" value="@r.IdRegla" />
+                                <input type="number" name="valorLimite" value="@r.ValorLimite.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)" step="0.5" min="0" max="100" style="width: 80px; padding: 6px; border: 1px solid var(--border-ui); border-radius: 4px;" required />
+                                <button type="submit" class="btn btn-primary" style="padding: 5px 10px; font-size: 13px;">Guardar</button>
+                            </form>
+                        </td>
+                        <td>@r.UnidadMedida</td>
+                        <td><span style="font-size: 13px; color: #4a5568;">@r.FuenteNormativa</span></td>
+                        <td>@r.FechaVigenciaInicio.ToString("dd/MM/yyyy")</td>
+                        <td>
+                            <span class="user-tag" style="background-color: #38a169;">Activa</span>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

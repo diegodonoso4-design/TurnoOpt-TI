@@ -1,0 +1,26 @@
+﻿@using System.Security.Claims
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - TurnoOpt-TI</title>
+    <link rel="stylesheet" href="~/css/site.css" />
+</head>
+<body>
+    <header>
+        <partial name="_HeaderNav" />
+    </header>
+
+    <main class="main-container">
+        @RenderBody()
+    </main>
+
+    <footer>
+        &copy; 2026 TurnoOpt-TI - Sistema de Planificación y Gestión Operativa TI (IPLACEX)
+    </footer>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

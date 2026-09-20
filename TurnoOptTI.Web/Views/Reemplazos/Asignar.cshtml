@@ -1,0 +1,127 @@
+﻿@model TurnoOptTI.Web.ViewModels.ReemplazoSugeridoViewModel
+
+@{
+    ViewData["Title"] = "Formulario 3: Asignación de Reemplazos y Horas Extra";
+    Layout = "_Layout"; 
+}
+
+<div class="card">
+    <h2>Formulario 3: Panel de Reemplazos y Horas Extra (ACID)</h2>
+    <p style="color: var(--text-muted); margin-bottom: 1.5rem;">
+        Seleccione un turno vacante generado por licencia médica para evaluar algorítmicamente candidatos aptos que cumplan el descanso legal interjornada (Art. 38 CT).
+    </p>
+
+    @if (TempData["SuccessMsg"] != null)
+    {
+        <div style="background-color: #c6f6d5; border: 1px solid #9ae6b4; color: #22543d; padding: 12px; border-radius: 5px; margin-bottom: 20px;">
+            @TempData["SuccessMsg"]
+        </div>
+    }
+
+    @if (TempData["ErrorMsg"] != null)
+    {
+        <div style="background-color: #fed7d7; border: 1px solid #feb2b2; color: #9b2c2c; padding: 12px; border-radius: 5px; margin-bottom: 20px;">
+            @TempData["ErrorMsg"]
+        </div>
+    }
+
+    <h3>Turnos Vacantes Pendientes de Cobertura</h3>
+    <div class="table-responsive">
+        <table class="custom-table">
+            <thead>
+                <tr>
+                    <th>Fecha Turno</th>
+                    <th>Colaborador Ausente</th>
+                    <th>Turno</th>
+                    <th>Horario</th>
+                    <th>Acción</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.TurnosVacantes.Any())
+                {
+                    @foreach (var v in Model.TurnosVacantes)
+                    {
+                        <tr style="@(Model.IdPlanificacion == v.IdPlanificacion ? "background-color: #ebf8ff;" : "")">
+                            <td><strong>@v.FechaTurno.ToString("dd/MM/yyyy")</strong></td>
+                            <td>@v.Colaborador?.Nombre @v.Colaborador?.Apellido</td>
+                            <td>@v.TipoTurno?.NombreTurno</td>
+                            <td>@v.TipoTurno?.HoraInicio.ToString(@"hh\:mm") - @v.TipoTurno?.HoraFin.ToString(@"hh\:mm")</td>
+                            <td>
+                                <a asp-action="Asignar" asp-route-idPlanificacion="@v.IdPlanificacion" class="btn btn-primary" style="padding: 4px 10px; font-size: 13px;">
+                                    Buscar Suplente
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="5" style="text-align: center; color: var(--text-muted);">No hay turnos vacantes pendientes de suplencia.</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@if (Model.TurnoAfectado != null)
+{
+    <div class="card">
+        <h3>Candidatos Recomendados para el Turno del @Model.TurnoAfectado.FechaTurno.ToString("dd/MM/yyyy")</h3>
+        <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 1rem;">
+            Se ordenan por cumplimiento normativo legal y equidad en sobretiempos.
+        </p>
+
+        <div class="table-responsive">
+            <table class="custom-table">
+                <thead>
+                    <tr>
+                        <th>Candidato</th>
+                        <th>Cargo</th>
+                        <th>Horas Extra Mes</th>
+                        <th>Estado Normativo</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var cand in Model.CandidatosAptos)
+                    {
+                        <tr>
+                            <td><strong>@cand.NombreCompleto</strong></td>
+                            <td>@cand.Cargo</td>
+                            <td>@cand.HorasExtraAcumuladasMes hrs</td>
+                            <td>
+                                @if (cand.CumpleDescansoLegal)
+                                {
+                                    <span class="user-tag" style="background-color: #38a169;">Apto (Descanso OK)</span>
+                                }
+                                else
+                                {
+                                    <span class="user-tag" style="background-color: #e53e3e;">@cand.MotivoIncompatibilidad</span>
+                                }
+                            </td>
+                            <td>
+                                @if (cand.CumpleDescansoLegal)
+                                {
+                                    <form asp-action="ConfirmarReemplazo" method="post" style="display: flex; gap: 8px; align-items: center;">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="idPlanificacion" value="@Model.IdPlanificacion" />
+                                        <input type="hidden" name="idColaboradorSuplente" value="@cand.IdColaborador" />
+                                        <input type="number" name="horasExtra" value="2.00" step="0.5" min="0" max="4" style="width: 70px; padding: 4px; border: 1px solid var(--border-ui); border-radius: 4px;" title="Horas Extraordinarias" />
+                                        <button type="submit" class="btn btn-success" style="padding: 4px 10px; font-size: 13px;">Asignar Reemplazo</button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <span style="font-size: 12px; color: #a0aec0;">Bloqueado por Ley</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

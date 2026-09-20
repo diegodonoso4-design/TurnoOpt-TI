@@ -1,0 +1,152 @@
+﻿@model IEnumerable<TurnoOptTI.Web.Models.Colaborador>
+
+@{
+    ViewData["Title"] = "Gestión de Colaboradores TI";
+    Layout = "_Layout";
+    var roles = ViewBag.Roles as List<TurnoOptTI.Web.Models.Rol> ?? new List<TurnoOptTI.Web.Models.Rol>();
+}
+
+<div class="card">
+    <h2>Catálogo y Gestión de Operadores TI (RF02 / CU-009)</h2>
+    <p style="color: var(--text-muted); margin-bottom: 1.5rem;">
+        Administración del personal técnico para cobertura de servicios de guardia, turnos 24/7 y control de jornada semanal.
+    </p>
+
+    @if (TempData["SuccessMsg"] != null)
+    {
+        <div style="background-color: #c6f6d5; border: 1px solid #9ae6b4; color: #22543d; padding: 12px; border-radius: 5px; margin-bottom: 20px;">
+            @TempData["SuccessMsg"]
+        </div>
+    }
+
+    @if (TempData["ErrorMsg"] != null)
+    {
+        <div style="background-color: #fed7d7; border: 1px solid #feb2b2; color: #9b2c2c; padding: 12px; border-radius: 5px; margin-bottom: 20px;">
+            @TempData["ErrorMsg"]
+        </div>
+    }
+
+    <h3>Registrar Nuevo Colaborador</h3>
+    <form asp-action="Crear" method="post" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; align-items: end; margin-top: 1rem; margin-bottom: 2rem;">
+        @Html.AntiForgeryToken()
+
+        <div>
+            <label style="display: block; font-weight: 600; font-size: 14px; margin-bottom: 5px;">RUT</label>
+            <input type="text" name="Rut" placeholder="12.345.678-9" required style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-ui); border-radius: 4px;" />
+        </div>
+
+        <div>
+            <label style="display: block; font-weight: 600; font-size: 14px; margin-bottom: 5px;">Nombre</label>
+            <input type="text" name="Nombre" required style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-ui); border-radius: 4px;" />
+        </div>
+
+        <div>
+            <label style="display: block; font-weight: 600; font-size: 14px; margin-bottom: 5px;">Apellido</label>
+            <input type="text" name="Apellido" required style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-ui); border-radius: 4px;" />
+        </div>
+
+        <div>
+            <label style="display: block; font-weight: 600; font-size: 14px; margin-bottom: 5px;">Email Corporativo</label>
+            <input type="email" name="Email" placeholder="usuario@turnoopt.cl" required style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-ui); border-radius: 4px;" />
+        </div>
+
+        <div>
+            <label style="display: block; font-weight: 600; font-size: 14px; margin-bottom: 5px;">Cargo Operativo</label>
+            <input type="text" name="CargoTi" placeholder="Ej. Operador NOC 1" required style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-ui); border-radius: 4px;" />
+        </div>
+
+        <div>
+            <label style="display: block; font-weight: 600; font-size: 14px; margin-bottom: 5px;">Rol de Sistema</label>
+            <select name="IdRol" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-ui); border-radius: 4px;">
+                @foreach (var rol in roles)
+                {
+                    <option value="@rol.IdRol">@rol.NombreRol</option>
+                }
+            </select>
+        </div>
+
+        <div>
+            <label style="display: block; font-weight: 600; font-size: 14px; margin-bottom: 5px;">Horas Contrato Semanal</label>
+            <input type="number" name="HorasContratoSemanal" value="40" min="20" max="44" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-ui); border-radius: 4px;" />
+        </div>
+
+        <div>
+            <label style="display: block; font-weight: 600; font-size: 14px; margin-bottom: 5px;">Contraseña Inicial</label>
+            <input type="password" name="passwordPlana" placeholder="Operador2026!" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-ui); border-radius: 4px;" />
+        </div>
+
+        <div style="grid-column: 1 / -1;">
+            <button type="submit" class="btn btn-primary">Registrar Colaborador</button>
+        </div>
+    </form>
+
+    <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid var(--border-ui);" />
+
+    <h3>Dotación de Colaboradores Registrados</h3>
+    <div class="table-responsive" style="margin-top: 1rem;">
+        <table class="custom-table">
+            <thead>
+                <tr>
+                    <th>RUT</th>
+                    <th>Colaborador</th>
+                    <th>Email</th>
+                    <th>Cargo TI</th>
+                    <th>Rol</th>
+                    <th>Jornada</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var c in Model)
+                {
+                    <tr>
+                        <td><strong>@c.Rut</strong></td>
+                        <td>@c.Nombre @c.Apellido</td>
+                        <td>@c.Email</td>
+                        <td>@c.CargoTi</td>
+                        <td>@c.Rol?.NombreRol</td>
+                        <td>@c.HorasContratoSemanal hrs/sem</td>
+                        <td>
+                            @if (c.Estado == "Activo")
+                            {
+                                <span class="user-tag" style="background-color: #38a169;">Activo</span>
+                            }
+                            else
+                            {
+                                <span class="user-tag" style="background-color: #e53e3e;">@c.Estado</span>
+                            }
+                        </td>
+                        <td>
+                            <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                                <!-- Botón Cambiar Estado -->
+                                <form asp-action="CambiarEstado" method="post" style="display: inline; margin: 0;">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="idColaborador" value="@c.IdColaborador" />
+                                    @if (c.Estado == "Activo")
+                                    {
+                                        <input type="hidden" name="nuevoEstado" value="Inactivo" />
+                                        <button type="submit" class="btn" style="background-color: #e53e3e; color: white; padding: 4px 8px; font-size: 12px;">Desactivar</button>
+                                    }
+                                    else
+                                    {
+                                        <input type="hidden" name="nuevoEstado" value="Activo" />
+                                        <button type="submit" class="btn btn-success" style="padding: 4px 8px; font-size: 12px;">Activar</button>
+                                    }
+                                </form>
+
+                                <!-- Formulario Resetear Contraseña -->
+                                <form asp-action="ResetearPassword" method="post" style="display: inline-flex; gap: 4px; align-items: center; margin: 0;" onsubmit="return confirm('¿Desea restablecer la contraseña para @c.Nombre @c.Apellido? Si deja el campo vacío se asignará: Operador2026!');">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="idColaborador" value="@c.IdColaborador" />
+                                    <input type="text" name="nuevaPassword" placeholder="Nueva clave (opcional)" style="width: 140px; padding: 4px 6px; font-size: 12px; border: 1px solid var(--border-ui); border-radius: 4px;" />
+                                    <button type="submit" class="btn btn-primary" style="padding: 4px 8px; font-size: 12px;">Resetear</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

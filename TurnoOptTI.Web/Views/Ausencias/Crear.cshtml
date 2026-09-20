@@ -1,0 +1,110 @@
+﻿@model TurnoOptTI.Web.ViewModels.RegistroAusenciaViewModel
+
+@{
+    ViewData["Title"] = "Registro de Ausencias y Licencias";
+    Layout = "_Layout"; // <--- ESTA LÍNEA RESTAURA LOS ESTILOS Y EL DISEÑO GLOBAL
+}
+
+<div class="card">
+    <h2>Formulario 2: Registro de Ausencias y Contingencias</h2>
+    <p style="color: var(--text-muted); margin-bottom: 1.5rem;">
+        Registre licencias médicas o permisos. Los turnos programados en el rango se marcarán como "Ausente" para su posterior sustitución.
+    </p>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div style="background-color: #c6f6d5; border: 1px solid #9ae6b4; color: #22543d; padding: 12px; border-radius: 5px; margin-bottom: 20px;">
+            @TempData["SuccessMessage"]
+        </div>
+    }
+
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div style="background-color: #fed7d7; border: 1px solid #feb2b2; color: #9b2c2c; padding: 12px; border-radius: 5px; margin-bottom: 20px;">
+            @Html.ValidationSummary(false, "", new { @style = "list-style: none;" })
+        </div>
+    }
+
+    <form asp-action="Crear" method="post" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; align-items: end;">
+        @Html.AntiForgeryToken()
+
+        <div>
+            <label style="display: block; font-weight: 600; font-size: 14px; margin-bottom: 5px;">Colaborador</label>
+            <select asp-for="IdColaborador" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 4px;">
+                @foreach (var colab in Model.ColaboradoresDisponibles)
+                {
+                    <option value="@colab.IdColaborador">@colab.Nombre @colab.Apellido (@colab.CargoTi)</option>
+                }
+            </select>
+        </div>
+
+        <div>
+            <label style="display: block; font-weight: 600; font-size: 14px; margin-bottom: 5px;">Tipo de Ausencia</label>
+            <select asp-for="TipoAusencia" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 4px;">
+                <option value="Licencia Médica">Licencia Médica</option>
+                <option value="Permiso Administrativo">Permiso Administrativo</option>
+                <option value="Día Libre">Día Libre</option>
+                <option value="Vacaciones">Vacaciones</option>
+            </select>
+        </div>
+
+        <div>
+            <label style="display: block; font-weight: 600; font-size: 14px; margin-bottom: 5px;">Fecha Inicio</label>
+            <input asp-for="FechaInicio" type="date" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 4px;" />
+        </div>
+
+        <div>
+            <label style="display: block; font-weight: 600; font-size: 14px; margin-bottom: 5px;">Fecha Término</label>
+            <input asp-for="FechaFin" type="date" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 4px;" />
+        </div>
+
+        <div style="grid-column: 1 / -1;">
+            <label style="display: block; font-weight: 600; font-size: 14px; margin-bottom: 5px;">Motivo / Folio Licencia</label>
+            <input asp-for="MotivoDetalle" type="text" placeholder="Ej. Licencia Folio #123456 por reposo médico" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 4px;" />
+        </div>
+
+        <div style="grid-column: 1 / -1; margin-top: 10px;">
+            <button type="submit" class="btn btn-primary">Registrar Ausencia</button>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <h3>Historial de Ausencias Recientes</h3>
+    <div class="table-responsive">
+        <table class="custom-table">
+            <thead>
+                <tr>
+                    <th>Colaborador</th>
+                    <th>Tipo</th>
+                    <th>Desde</th>
+                    <th>Hasta</th>
+                    <th>Motivo</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.AusenciasRecientes.Any())
+                {
+                    @foreach (var aus in Model.AusenciasRecientes)
+                    {
+                        <tr>
+                            <td>@aus.Colaborador?.Nombre @aus.Colaborador?.Apellido</td>
+                            <td>@aus.TipoAusencia</td>
+                            <td>@aus.FechaInicio.ToString("dd/MM/yyyy")</td>
+                            <td>@aus.FechaFin.ToString("dd/MM/yyyy")</td>
+                            <td>@(string.IsNullOrEmpty(aus.MotivoDetalle) ? "-" : aus.MotivoDetalle)</td>
+                            <td><span class="user-badge" style="background-color: #38a169;">@aus.EstadoAprobacion</span></td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: var(--text-muted);">No hay registros de ausencias ingresados.</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

@@ -1,0 +1,163 @@
+﻿@model TurnoOptTI.Web.ViewModels.LoginViewModel
+
+@{
+    ViewData["Title"] = "Iniciar Sesión - TurnoOpt-TI";
+    Layout = null; 
+}
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+
+        body {
+            background-color: #f0f2f5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .login-card {
+            background: #ffffff;
+            width: 100%;
+            max-width: 420px;
+            padding: 35px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+            .login-header h1 {
+                font-size: 24px;
+                color: #1a365d;
+                margin-bottom: 8px;
+            }
+
+            .login-header p {
+                font-size: 14px;
+                color: #718096;
+            }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+            .form-group label {
+                display: block;
+                font-size: 14px;
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 6px;
+            }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 12px;
+            font-size: 15px;
+            border: 1px solid #cbd5e0;
+            border-radius: 5px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+            .form-control:focus {
+                border-color: #3182ce;
+            }
+
+        .btn-submit {
+            width: 100%;
+            padding: 12px;
+            background-color: #2b6cb0;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+            .btn-submit:hover {
+                background-color: #2c5282;
+            }
+
+        .alert-error {
+            background-color: #fed7d7;
+            border: 1px solid #feb2b2;
+            color: #9b2c2c;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .credentials-box {
+            margin-top: 25px;
+            padding: 15px;
+            background-color: #edf2f7;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #4a5568;
+        }
+
+            .credentials-box p {
+                margin-bottom: 5px;
+            }
+    </style>
+</head>
+<body>
+
+    <div class="login-card">
+        <div class="login-header">
+            <h1>TurnoOpt-TI</h1>
+            <p>Planificación y Control Operativo</p>
+        </div>
+
+        @if (!ViewData.ModelState.IsValid)
+        {
+            <div class="alert-error">
+                @Html.ValidationSummary(false, "", new { @style = "list-style: none;" })
+            </div>
+        }
+
+        <form asp-action="Login" asp-controller="Account" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="returnUrl" value="@ViewData["ReturnUrl"]" />
+
+            <div class="form-group">
+                <label for="Email">Correo Electrónico</label>
+                <input type="email" id="Email" name="Email" class="form-control" placeholder="usuario@turnoopt.cl" value="@Model?.Email" required />
+            </div>
+
+            <div class="form-group">
+                <label for="Password">Contraseña</label>
+                <input type="password" id="Password" name="Password" class="form-control" placeholder="••••••••" required />
+            </div>
+
+            <button type="submit" class="btn-submit">Ingresar al Sistema</button>
+        </form>
+
+        <div class="credentials-box">
+            <p><strong>Cuentas de Acceso de Prueba:</strong></p>
+            <p><strong>Supervisor:</strong> supervisor.ti@turnoopt.cl | SuperAdmin2026!</p>
+            <p><strong>Operador:</strong> operador.ti@turnoopt.cl | Operador2026!</p>
+        </div>
+    </div>
+
+</body>
+</html>

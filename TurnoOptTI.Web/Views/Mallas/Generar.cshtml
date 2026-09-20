@@ -1,0 +1,280 @@
+﻿@model TurnoOptTI.Web.ViewModels.GenerarMallaViewModel
+
+@{
+    ViewData["Title"] = "Planificador de Mallas";
+    Layout = "_Layout";
+}
+
+<!-- Sección 1: Creación Rápida de Esquema -->
+<div class="planner-card planner-card--subtle">
+    <div class="card-header-flex">
+        <div>
+            <h3 class="card-title">Nuevo Esquema Operativo</h3>
+            <p class="card-subtitle">Define las reglas de cobertura y calcula la dotación teórica mínima.</p>
+        </div>
+    </div>
+
+    <form asp-action="CrearEsquema" method="post" class="form-grid-esquema">
+        @Html.AntiForgeryToken()
+
+        <div class="form-field" style="grid-column: span 1.5;">
+            <label class="field-label">Nombre Esquema</label>
+            <input type="text" name="nombreEsquema" class="input-minimal" required placeholder="Ej. Mesa Técnica 5x2 L-V" />
+        </div>
+
+        <div class="form-field">
+            <label class="field-label">Cobertura</label>
+            <select name="coberturaOperativa" id="selectCobertura" class="select-minimal">
+                <option value="24/7">Continuo 24/7</option>
+                <option value="L-S">Lunes a Sábado</option>
+                <option value="L-V" selected>Lunes a Viernes</option>
+            </select>
+        </div>
+
+        <div class="form-field">
+            <label class="field-label">Distribución Diaria</label>
+            <select name="modalidadTurnos" id="selectModalidad" class="select-minimal">
+                <option value="3">3 Turnos (8h)</option>
+                <option value="2">2 Turnos (12h)</option>
+                <option value="1">1 Turno (8.5h)</option>
+            </select>
+        </div>
+
+        <div class="form-field">
+            <label class="field-label">Trabajo (D)</label>
+            <input type="number" name="diasTrabajo" id="inputDiasTrabajo" class="input-minimal" required min="1" value="5" />
+        </div>
+
+        <div class="form-field">
+            <label class="field-label">Descanso (D)</label>
+            <input type="number" name="diasDescanso" id="inputDiasDescanso" class="input-minimal" required min="1" value="2" />
+        </div>
+
+        <div class="form-field">
+            <label class="field-label">Dot./Turno</label>
+            <input type="number" name="dotacionPorTurno" id="inputDotPorTurno" class="input-minimal" required min="1" value="1" title="Operadores requeridos por cada turno" />
+        </div>
+
+        <div class="form-field">
+            <label class="field-label">Dot. Mínima</label>
+            <input type="number" name="dotacionMinima" id="inputDotMinima" readonly class="input-minimal input-minimal--highlight" />
+        </div>
+
+        <button type="submit" class="btn-modern-primary">Guardar Esquema</button>
+    </form>
+</div>
+
+<!-- Sección 2: Generador de Período -->
+<div class="planner-card">
+    <div class="card-header-flex">
+        <div>
+            <h2 class="card-title">Motor Algorítmico de Asignación</h2>
+            <p class="card-subtitle">Selecciona los parámetros para programar y optimizar la dotación del mes.</p>
+        </div>
+    </div>
+
+    @if (TempData["SuccessMsg"] != null)
+    {
+        <div class="badge-chip badge-chip--approved" style="padding: 0.75rem 1rem; border-radius: var(--radius-md); margin-bottom: 1rem; width: 100%;">
+            ✓ @TempData["SuccessMsg"]
+        </div>
+    }
+
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div class="badge-chip" style="background: #fef2f2; color: #991b1b; padding: 0.75rem 1rem; border-radius: var(--radius-md); margin-bottom: 1rem; width: 100%;">
+            @Html.ValidationSummary(false, "", new { @style = "list-style: none; margin: 0; padding: 0;" })
+        </div>
+    }
+
+    <form asp-action="Generar" method="post" class="form-grid-malla">
+        @Html.AntiForgeryToken()
+
+        <div class="form-field">
+            <label class="field-label">Esquema Configurado</label>
+            <select name="IdEsquema" class="select-minimal">
+                @foreach (var esq in Model.EsquemasDisponibles)
+                {
+                    <option value="@esq.IdEsquema" selected="@(esq.IdEsquema == Model.IdEsquema)">
+                        @esq.NombreEsquema — @esq.TipoJornada
+                    </option>
+                }
+            </select>
+        </div>
+
+        <div class="form-field">
+            <label class="field-label">Mes</label>
+            <select id="selectMes" name="Mes" class="select-minimal">
+                @for (int m = 1; m <= 12; m++)
+                {
+                    <option value="@m" selected="@(m == Model.Mes)">
+                        @System.Globalization.DateTimeFormatInfo.CurrentInfo.GetMonthName(m).ToUpper()
+                    </option>
+                }
+            </select>
+        </div>
+
+        <div class="form-field">
+            <label class="field-label">Año</label>
+            <input type="number" id="inputAnio" name="Anio" value="@Model.Anio" class="input-minimal" />
+        </div>
+
+        <button type="submit" class="btn-modern-primary">Generar Malla</button>
+    </form>
+</div>
+
+<!-- Sección 3: Resultados de la Malla -->
+@if (Model.MallaResultado != null)
+{
+    <div class="planner-card">
+        <div class="card-header-flex">
+            <div>
+                <h3 class="card-title">@Model.MallaResultado.Esquema?.NombreEsquema</h3>
+                <p class="card-subtitle">
+                    Período: <strong>@Model.MallaResultado.PeriodoMes/@Model.MallaResultado.PeriodoAnio</strong> &nbsp;•&nbsp;
+                    Estado:
+                    @if (Model.MallaResultado.EstadoMalla == "Aprobada")
+                    {
+                        <span class="badge-chip badge-chip--approved">Aprobada</span>
+                    }
+                    else
+                    {
+                        <span class="badge-chip badge-chip--draft">Borrador</span>
+                    }
+                </p>
+            </div>
+
+            @if (Model.MallaResultado.EstadoMalla == "Borrador")
+            {
+                <form asp-action="Aprobar" method="post" style="margin: 0;">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="idMalla" value="@Model.MallaResultado.IdMalla" />
+                    <button type="submit" class="btn-modern-success">✓ Aprobar y Despachar Notificaciones</button>
+                </form>
+            }
+            else
+            {
+                <span class="badge-chip badge-chip--approved" style="font-size: 0.8125rem; padding: 0.5rem 0.875rem;">
+                    ✓ Malla Oficial Notificada
+                </span>
+            }
+        </div>
+
+        <div class="table-container">
+            <table class="modern-table">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Colaborador</th>
+                        <th>Cargo</th>
+                        <th>Tipo Turno</th>
+                        <th>Horario</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var turno in Model.MallaResultado.Turnos.OrderBy(t => t.FechaTurno).ThenBy(t => t.Colaborador?.Apellido))
+                    {
+                        <tr>
+                            <td class="time-mono">@turno.FechaTurno.ToString("dd/MM/yyyy")</td>
+                            <td>
+                                <strong>@turno.Colaborador?.Nombre @turno.Colaborador?.Apellido</strong>
+                            </td>
+                            <td style="color: var(--text-secondary);">@turno.Colaborador?.CargoTi</td>
+                            <td>
+                                <span class="badge-chip @(turno.TipoTurno?.EsNocturno == true ? "badge-chip--night" : "badge-chip--day")">
+                                    @(turno.TipoTurno?.EsNocturno == true ? "🌙" : "☀️") @turno.TipoTurno?.CodigoTurno
+                                </span>
+                            </td>
+                            <td class="time-mono">
+                                @turno.TipoTurno?.HoraInicio.ToString(@"hh\:mm") – @turno.TipoTurno?.HoraFin.ToString(@"hh\:mm")
+                            </td>
+                            <td>
+                                <span style="font-size: 0.8125rem; color: var(--text-secondary);">@turno.EstadoTurno</span>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const selectCobertura = document.getElementById('selectCobertura');
+            const selectModalidad = document.getElementById('selectModalidad');
+            const inputDiasTrabajo = document.getElementById('inputDiasTrabajo');
+            const inputDiasDescanso = document.getElementById('inputDiasDescanso');
+            const inputDotPorTurno = document.getElementById('inputDotPorTurno');
+            const inputDotMinima = document.getElementById('inputDotMinima');
+
+            function actualizarDotacionMinima() {
+                const cobertura = selectCobertura ? selectCobertura.value : '24/7';
+                const turnosPorDia = parseInt(selectModalidad.value) || 1;
+                const diasTrab = parseInt(inputDiasTrabajo.value) || 1;
+                const diasDesc = parseInt(inputDiasDescanso.value) || 1;
+                const dotPorTurno = parseInt(inputDotPorTurno.value) || 1;
+
+                let dotacionFinal = 0;
+
+                if (cobertura === '24/7') {
+                    const totalCiclo = diasTrab + diasDesc;
+                    const factorRelevo = totalCiclo / (diasTrab > 0 ? diasTrab : 1);
+                    dotacionFinal = Math.ceil(dotPorTurno * turnosPorDia * factorRelevo);
+                } else if (cobertura === 'L-V') {
+                    const factorSemanal = 5.0 / (diasTrab > 0 ? diasTrab : 5);
+                    dotacionFinal = Math.ceil(dotPorTurno * turnosPorDia * factorSemanal);
+                } else {
+                    const factorSemanal = 6.0 / (diasTrab > 0 ? diasTrab : 5);
+                    dotacionFinal = Math.ceil(dotPorTurno * turnosPorDia * factorSemanal);
+                }
+
+                if (inputDotMinima) {
+                    inputDotMinima.value = dotacionFinal > 0 ? dotacionFinal : 1;
+                }
+            }
+
+            if (selectCobertura) {
+                selectCobertura.addEventListener('change', function () {
+                    if (this.value === 'L-V') {
+                        inputDiasTrabajo.value = 5;
+                        inputDiasDescanso.value = 2;
+                    } else if (this.value === '24/7') {
+                        inputDiasTrabajo.value = 4;
+                        inputDiasDescanso.value = 4;
+                    } else if (this.value === 'L-S') {
+                        inputDiasTrabajo.value = 5;
+                        inputDiasDescanso.value = 2;
+                    }
+                    actualizarDotacionMinima();
+                });
+            }
+
+            [selectCobertura, selectModalidad, inputDiasTrabajo, inputDiasDescanso, inputDotPorTurno].forEach(el => {
+                if (el) {
+                    el.addEventListener('input', actualizarDotacionMinima);
+                    el.addEventListener('change', actualizarDotacionMinima);
+                }
+            });
+
+            actualizarDotacionMinima();
+
+            const selectMes = document.getElementById('selectMes');
+            const inputAnio = document.getElementById('inputAnio');
+
+            function consultarPeriodo() {
+                const mes = selectMes ? selectMes.value : null;
+                const anio = inputAnio ? inputAnio.value : null;
+
+                if (mes && anio && anio.length === 4) {
+                    window.location.href = '@Url.Action("Generar", "Mallas")?mes=' + mes + '&anio=' + anio;
+                }
+            }
+
+            if (selectMes) selectMes.addEventListener('change', consultarPeriodo);
+            if (inputAnio) inputAnio.addEventListener('change', consultarPeriodo);
+        });
+    </script>
+}

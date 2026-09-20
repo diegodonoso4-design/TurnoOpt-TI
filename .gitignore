@@ -1,0 +1,9 @@
+## Directorios de compilación y temporales de .NET
+bin/
+obj/
+.vs/
+*.user
+*.suo
+
+## Archivos de configuración local de entorno
+appsettings.Development.json
