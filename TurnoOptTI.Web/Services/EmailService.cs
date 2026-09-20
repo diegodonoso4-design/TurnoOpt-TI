@@ -1,9 +1,7 @@
-﻿using System.Text;
-using MailKit.Net.Smtp;
-using MailKit.Security;
+﻿using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
-using MimeKit;
 using TurnoOptTI.Web.Data;
 using TurnoOptTI.Web.Models;
 
@@ -11,27 +9,78 @@ namespace TurnoOptTI.Web.Services
 {
     public class EmailService : IEmailService
     {
-        private readonly EmailSettings _settings;
+        private readonly IConfiguration _configuration;
         private readonly ApplicationDbContext _context;
         private readonly ILogger<EmailService> _logger;
+        private static readonly HttpClient _httpClient = new HttpClient();
 
-        public EmailService(IOptions<EmailSettings> settings, ApplicationDbContext context, ILogger<EmailService> logger)
+        public EmailService(IConfiguration configuration, ApplicationDbContext context, ILogger<EmailService> logger)
         {
-            _settings = settings.Value;
+            _configuration = configuration;
             _context = context;
             _logger = logger;
         }
 
         public async Task EnviarCorreoAsync(string destinatario, string asunto, string cuerpoHtml)
         {
-            var mensaje = ArmarMensaje(destinatario, asunto, cuerpoHtml);
+            string apiKey = _configuration["EmailSettings:Password"]
+                         ?? _configuration["EmailSettings__Password"]
+                         ?? "";
 
-            using var cliente = new SmtpClient();
-            cliente.Timeout = 15000;
+            string remitenteEmail = _configuration["EmailSettings:SenderEmail"]
+                                 ?? _configuration["EmailSettings__SenderEmail"]
+                                 ?? "diegodonoso4@gmail.com";
 
-            await ConectarClienteAsync(cliente);
-            await cliente.SendAsync(mensaje);
-            await cliente.DisconnectAsync(true);
+            string remitenteNombre = _configuration["EmailSettings:SenderName"]
+                                  ?? _configuration["EmailSettings__SenderName"]
+                                  ?? "TurnoOpt TI - Notificaciones";
+
+            if (string.IsNullOrWhiteSpace(apiKey))
+            {
+                _logger.LogWarning("API Key de SendGrid no configurada en EmailSettings:Password.");
+                return;
+            }
+
+            var payload = new
+            {
+                personalizations = new[]
+                {
+                    new
+                    {
+                        to = new[] { new { email = destinatario } }
+                    }
+                },
+                from = new
+                {
+                    email = remitenteEmail,
+                    name = remitenteNombre
+                },
+                subject = asunto,
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text/html",
+                        value = cuerpoHtml
+                    }
+                }
+            };
+
+            using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.sendgrid.com/v3/mail/send");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+            request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+
+            var response = await _httpClient.SendAsync(request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                _logger.LogInformation("Notificación enviada exitosamente vía API HTTPS a {Email}", destinatario);
+            }
+            else
+            {
+                string errorBody = await response.Content.ReadAsStringAsync();
+                _logger.LogError("Fallo al enviar correo vía API SendGrid: {StatusCode} - {Error}", response.StatusCode, errorBody);
+            }
         }
 
         public async Task NotificarMallaAprobadaAsync(int idMalla)
@@ -54,72 +103,23 @@ namespace TurnoOptTI.Web.Services
             if (!turnosPorColab.Any())
                 return;
 
-            using var cliente = new SmtpClient();
-            cliente.Timeout = 15000;
-
-            try
+            foreach (var grupo in turnosPorColab)
             {
-                await ConectarClienteAsync(cliente);
+                var colab = grupo.Key!;
+                var turnosOrdenados = grupo.OrderBy(t => t.FechaTurno).ToList();
+                string cuerpoHtml = GenerarHtmlPlanificacion(malla, colab, turnosOrdenados);
+                string asunto = $"[TurnoOpt TI] Tu Malla de Turnos Oficial - {malla.PeriodoMes}/{malla.PeriodoAnio}";
 
-                foreach (var grupo in turnosPorColab)
+                try
                 {
-                    var colab = grupo.Key!;
-                    var turnosOrdenados = grupo.OrderBy(t => t.FechaTurno).ToList();
-                    string cuerpoHtml = GenerarHtmlPlanificacion(malla, colab, turnosOrdenados);
-                    string asunto = $"[TurnoOpt TI] Tu Malla de Turnos Oficial - {malla.PeriodoMes}/{malla.PeriodoAnio}";
-
-                    try
-                    {
-                        var mensaje = ArmarMensaje(colab.Email, asunto, cuerpoHtml);
-                        await cliente.SendAsync(mensaje);
-                        _logger.LogInformation("Notificación enviada exitosamente a {Email}", colab.Email);
-
-                        await Task.Delay(200);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Error al entregar correo a {Email}", colab.Email);
-                    }
+                    await EnviarCorreoAsync(colab.Email, asunto, cuerpoHtml);
+                    await Task.Delay(100);
                 }
-
-                await cliente.DisconnectAsync(true);
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error al despachar notificación a {Email}", colab.Email);
+                }
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Fallo crítico en conexión SMTP con {Host}:{Port}", _settings.SmtpServer, _settings.Port);
-                throw;
-            }
-        }
-
-        private async Task ConectarClienteAsync(SmtpClient cliente)
-        {
-            int puerto = _settings.Port > 0 ? _settings.Port : 2525;
-
-            var socketOption = puerto == 465
-                ? SecureSocketOptions.SslOnConnect
-                : SecureSocketOptions.StartTls;
-
-            _logger.LogInformation("Conectando a {Host}:{Port} ({Option})...", _settings.SmtpServer, puerto, socketOption);
-
-            await cliente.ConnectAsync(_settings.SmtpServer, puerto, socketOption);
-
-            // SendGrid exige autenticarse con el usuario "apikey"
-            string usuarioAuth = _settings.SmtpServer.Contains("sendgrid") ? "apikey" : _settings.SenderEmail;
-
-            await cliente.AuthenticateAsync(usuarioAuth, _settings.Password);
-            _logger.LogInformation("Autenticación SMTP exitosa en {Host}", _settings.SmtpServer);
-        }
-
-        private MimeMessage ArmarMensaje(string destinatario, string asunto, string cuerpoHtml)
-        {
-            var mensaje = new MimeMessage();
-            mensaje.From.Add(new MailboxAddress(_settings.SenderName, _settings.SenderEmail));
-            mensaje.To.Add(MailboxAddress.Parse(destinatario));
-            mensaje.Subject = asunto;
-
-            var builder = new BodyBuilder { HtmlBody = cuerpoHtml };
-            mensaje.Body = builder.ToMessageBody();
-            return mensaje;
         }
 
         private string GenerarHtmlPlanificacion(MallaCabecera malla, Colaborador colab, List<PlanificacionTurno> turnos)
