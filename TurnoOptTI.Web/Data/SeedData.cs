@@ -59,7 +59,7 @@ namespace TurnoOptTI.Web.Data
                 await context.SaveChangesAsync();
             }
 
-            // Sembrar Tipos de Turno
+            // Sembrar Tipos de Turno (Actualizado con los 6 turnos de producción)
             if (!await context.TiposTurno.AnyAsync())
             {
                 await context.TiposTurno.AddRangeAsync(
@@ -89,6 +89,33 @@ namespace TurnoOptTI.Web.Data
                         HoraFin = new TimeSpan(17, 30, 0),
                         DuracionHoras = 8.50m,
                         EsNocturno = false
+                    },
+                    new TipoTurno
+                    {
+                        CodigoTurno = "T5X2-M",
+                        NombreTurno = "Turno 5x2 Mañana 8h",
+                        HoraInicio = new TimeSpan(8, 0, 0),
+                        HoraFin = new TimeSpan(16, 0, 0),
+                        DuracionHoras = 8.00m,
+                        EsNocturno = false
+                    },
+                    new TipoTurno
+                    {
+                        CodigoTurno = "T5X2-T",
+                        NombreTurno = "Turno 5x2 Tarde 8h",
+                        HoraInicio = new TimeSpan(16, 0, 0),
+                        HoraFin = new TimeSpan(0, 0, 0),
+                        DuracionHoras = 8.00m,
+                        EsNocturno = false
+                    },
+                    new TipoTurno
+                    {
+                        CodigoTurno = "T5X2-N",
+                        NombreTurno = "Turno 5x2 Noche 8h",
+                        HoraInicio = new TimeSpan(0, 0, 0),
+                        HoraFin = new TimeSpan(8, 0, 0),
+                        DuracionHoras = 8.00m,
+                        EsNocturno = true
                     }
                 );
                 await context.SaveChangesAsync();
