@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using TurnoOptTI.Web.Data;
 using TurnoOptTI.Web.Models;
@@ -34,6 +35,12 @@ builder.Services.AddScoped<IRuleValidationService, RuleValidationService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 
 var app = builder.Build();
+
+// Configuración de Headers de reenvío para proxies inversos (Railway)
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
 
 // Manejo de entornos
 if (!app.Environment.IsDevelopment())
