@@ -15,28 +15,30 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
 
-// Autenticación basada en Cookies para Roles (Supervisor y Operador)
+// Autenticación basada en Cookies
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
         options.LoginPath = "/Account/Login";
         options.AccessDeniedPath = "/Account/AccessDenied";
         options.ExpireTimeSpan = TimeSpan.FromHours(8);
+        options.Cookie.SameSite = SameSiteMode.Lax;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
     });
 
 builder.Services.AddAuthorization();
 
-// Vinculación de configuración SMTP (appsettings.json -> EmailSettings)
+// Vinculación de configuración SMTP
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
 
-// Registro de servicios de la capa de negocio (Services)
+// Registro de servicios de la capa de negocio
 builder.Services.AddScoped<ITurnoEngineService, TurnoEngineService>();
 builder.Services.AddScoped<IRuleValidationService, RuleValidationService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 
 var app = builder.Build();
 
-// Configuración de Headers de reenvío para proxies inversos (Railway)
+// Configuración de Headers de reenvío para proxies (Railway)
 var forwardedOptions = new ForwardedHeadersOptions
 {
     ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
@@ -45,14 +47,13 @@ forwardedOptions.KnownNetworks.Clear();
 forwardedOptions.KnownProxies.Clear();
 app.UseForwardedHeaders(forwardedOptions);
 
-// Manejo de entornos
+// Manejo de excepciones en producción (SIN UseHsts)
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
-    app.UseHsts();
 }
 
-app.UseHttpsRedirection();
+// SIN UseHttpsRedirection (el proxy de Railway ya maneja SSL)
 app.UseStaticFiles();
 
 app.UseRouting();
