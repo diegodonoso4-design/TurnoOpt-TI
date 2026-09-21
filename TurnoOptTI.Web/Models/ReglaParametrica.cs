@@ -38,5 +38,8 @@ namespace TurnoOptTI.Web.Models
 
         [Column("id_supervisor_actualiza")]
         public int? IdSupervisorActualiza { get; set; }
+
+        [ForeignKey("IdSupervisorActualiza")]
+        public Colaborador? SupervisorActualiza { get; set; }
     }
 }

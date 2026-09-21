@@ -41,6 +41,12 @@ namespace TurnoOptTI.Web.Models
         [ForeignKey("IdEsquema")]
         public EsquemaCobertura? Esquema { get; set; }
 
+       [ForeignKey("IdSupervisorCrea")]
+        public Colaborador? SupervisorCrea { get; set; }
+
+        [ForeignKey("IdSupervisorAprueba")]
+        public Colaborador? SupervisorAprueba { get; set; }
+
         public ICollection<PlanificacionTurno> Turnos { get; set; } = new List<PlanificacionTurno>();
     }
 }
