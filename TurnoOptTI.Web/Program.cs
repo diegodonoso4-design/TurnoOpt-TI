@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using TurnoOptTI.Web.Data;
 using TurnoOptTI.Web.Models;
@@ -15,45 +14,35 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
 
-// Autenticación basada en Cookies
+// Autenticación basada en Cookies para Roles (Supervisor y Operador)
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
         options.LoginPath = "/Account/Login";
         options.AccessDeniedPath = "/Account/AccessDenied";
         options.ExpireTimeSpan = TimeSpan.FromHours(8);
-        options.Cookie.SameSite = SameSiteMode.Lax;
-        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
     });
 
 builder.Services.AddAuthorization();
 
-// Vinculación de configuración SMTP
+// Vinculación de configuración SMTP (appsettings.json -> EmailSettings)
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
 
-// Registro de servicios de la capa de negocio
+// Registro de servicios de la capa de negocio (Services)
 builder.Services.AddScoped<ITurnoEngineService, TurnoEngineService>();
 builder.Services.AddScoped<IRuleValidationService, RuleValidationService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 
 var app = builder.Build();
 
-// Configuración de Headers de reenvío para proxies (Railway)
-var forwardedOptions = new ForwardedHeadersOptions
-{
-    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
-};
-forwardedOptions.KnownNetworks.Clear();
-forwardedOptions.KnownProxies.Clear();
-app.UseForwardedHeaders(forwardedOptions);
-
-// Manejo de excepciones en producción (SIN UseHsts)
+// Manejo de entornos
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
+    app.UseHsts();
 }
 
-// SIN UseHttpsRedirection (el proxy de Railway ya maneja SSL)
+app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
